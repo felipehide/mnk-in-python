@@ -1,12 +1,7 @@
 """
 ======================================================================
-  Any Objective Evolutionary Optimization
-  Hernan Aguirre
-  Shinshu University
-  Nagano, Japan
-  ahernan@shinshu-u.ac.jp
-  Copyright 1997-2011
-  ----------------------------------------------------------------------
+  Python Version of the MNK Generator
+  --------------------------------------------------------------------
   Create multi-objective NKP fitness landscapes (MNKP type)
   with random or near neighbors patterns of epistasis
 
@@ -17,28 +12,7 @@
 	O  number of objectives
 	x  x=R random epistasis, x=N near neighbor epistasis
 	L  number of landscapes
-
-  Output:     
-    A file containing the definition of the specified landscapes and a 
-	random seed per landscape.  
-	For each of the N bits there will be a string of 0s and 1s, 
-	marking with 1 the bit itself and its K interacting bits (epistasis). 
-	The random seeds will be used by the MNK-landscape class to 
-	generate 2(K+1) random numbers per bit, which are in turn used by the 
-	FitnessFunction of the same class to calculate the contribution to 
-	fitness of the bits applying a Reproducible Random Number Generation 
-	Method [1].
-
-
-  Notes: 
-    1. In Kauffman's NK-landscapes all bits contribute to fitness, so P=N
-	2. If P=N, the MNKP landscapes are known as MNK-landscapes and extend 
-	   Kauffman's NK-landscapes to multiple objectives
-
-  Reference:
-  [1] M. Shinkai, H. Aguirre, K. Tanaka, "Mutation Strategy Improves GA's 
-	Performance on Epistatic Problems", Proc. 2002 Congress on Evolutionary 
-	Computation (CEC'02), IEEE Service Center, vol.1, pp.968-973.
+    R  seed for the randomizing functions
 
   Example:    
     MONKP.exe 4 2 4 2 R 2
@@ -83,15 +57,14 @@
 		2332811499
 	 ---------- end ----------
   
-  ======================================================================
+======================================================================
 """
 
 import numpy as np
 import random
-
+import sys
 
 def near_epistasis(N,K,P,table):
-
     right = left = int(K/2)
     if (K%2 == 1):
         right = right+1
@@ -137,11 +110,37 @@ def random_seeds (L,O):
         r_seeds += str(random.randint(0,4294967295)%(4294967295-1+1)+1) + "\n"
     return r_seeds
 
-def main(N,K,P,O,L,pattern):
-    print("Insert here confirmation of variables")
+def main():
 
+    # User inputs
+    print(sys.argv)
+    if (len(sys.argv) > 1):
+        N = int(sys.argv[1])
+        K = int(sys.argv[2])
+        P = int(sys.argv[3])
+        O = int(sys.argv[4])
+        pattern = sys.argv[5]
+        L = int(sys.argv[6])
+        seed = int(sys.argv[7])
+    else: # No input given, takes from the keyboard
+        N = int(input("N="))
+        K = int(input("K="))
+        P = int(input("P="))
+        O = int(input("O="))
+        pattern = input("NEAR(N), RAND(R)=")
+        L = int(input("How many landscapes? "))
+        seed = int(input("seed="))
+    print(pattern)
+    if (pattern!="N" and pattern!="R"):
+        sys.exit("pattern does not match")
 
-    buffer = "@NKPO N " + str(N) + " K " + str(K) + " P " + str(P) + " O " + str(O) + " " + pattern + "\n"
+    long_pattern = 'NEAR' if pattern=='N' else 'RAND'
+    filename = "L" + str(L) + "_N" + str(N) + "_K" + str(K) + "_P" + str(P) + "_O" + str(O) + "_" + long_pattern 
+    print(filename + "( SEED" + str(seed) + ")")
+
+    random.seed(seed)
+
+    buffer = "@NKPO N " + str(N) + " K " + str(K) + " P " + str(P) + " O " + str(O) + " " + long_pattern + "\n"
     buffer += "@LANDSCAPES " + str(L) + "\n"
 
     for count in range(0,L):
@@ -153,7 +152,7 @@ def main(N,K,P,O,L,pattern):
             #         table[i][j] = 0
             buffer += "@O " + str(obj+1) + "\n"
             table = np.zeros([P,N])
-            if (pattern == "NEAR"):
+            if (pattern == "N"):
                 table=near_epistasis(N,K,P,table)
             else:
                 table=random_epistasis(N,K,P,table)
@@ -167,14 +166,8 @@ def main(N,K,P,O,L,pattern):
 
     buffer += random_seeds(L,O)
 
-    with open('output.txt', 'w') as file:
+    with open(filename, 'w') as file:
         file.write(buffer)
 
-N=20
-K=1
-P=20
-O=2
-L=30
-pattern = "RAND" # OR RAND
-
-main(N,K,P,O,L,pattern)
+if __name__ == "__main__":
+    main()
