@@ -10,6 +10,7 @@ from platform import mac_ver
 import numpy as np
 import random
 import sys
+from scipy.stats import truncnorm
 
 # import toolbox
 
@@ -201,8 +202,10 @@ class NKLandscape:
                 if (self.mVerify == True):
                     print("rseed: " + str(rseed))
                 random.seed(rseed)
-                fi = random.randint(0,65535) # Not really necessary
-                self.mpFitContribution[y][i] += fi/65535 # A number from 0 to 1
+
+                # fi = random.randint(0,65535) # Not really necessary
+                # self.mpFitContribution[y][i] += fi/65535 # A number from 0 to 1
+                self.mpFitContribution[y][i] += random.random() # A number from 0 to 1
                 # random.seed(rseed)
                 # fi= ( (random.randint(0,4294967295) >> 7) & 0xff) + ( (random.randint(0,4294967295) << 1) & 0xff00 )
                 # self.mpFitContribution[y][i] += fi / 65535 # A number from 0 to 1
