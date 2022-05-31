@@ -11,6 +11,8 @@ import numpy as np
 import random
 import sys
 
+# import toolbox
+
 class NKLandscape:
     mN = 0
     mK = 0
@@ -39,7 +41,7 @@ class NKLandscape:
 
         self.mVerify = verify
 
-        fin = open(pdir + plname, 'r')
+        fin = open(pdir, 'r')
 
         self.ReadLandscapeHeader(fin)
         self.GetEpistasisAddress(fin)
@@ -78,28 +80,36 @@ class NKLandscape:
 
         self.mpEpistasisAddress = np.zeros([self.mLandscapesInFile, self.mOb, self.mP, int(self.mK + 1)], dtype=int)
 
-        for i in range(0,self.mLandscapesInFile):
+        for x in range(0,self.mLandscapesInFile):
             # Reads @L x
             line = fin.readline()
             ch = line.split()
             self.mL = ch[1]
-            for j in range(0,self.mOb):
+            for y in range(0,self.mOb):
                 # Reads @O x
                 line1 = fin.readline()
                 ch1 = line1.split()
                 self.mOb = int(ch1[1])
-                for k in range(0,self.mP):
-                    index = k
+                for i in range(0,self.mP):
+                    index = 0
                     line2 = fin.readline()
                     ch2 = line2.split()
-                    for l in ch2:
-                        if l == 1:
-                            self.mpEpistasisAddress[i][j][k][index+1] = int(l)
+                    for j in range(0,self.mN):
+                        epistasis = int(ch2[j])
+                        # print("epistasis: " + str(epistasis) + " j: " + str(int(j)))
+                        if (epistasis == 1):
+                            # print("inside the if")
+                            self.mpEpistasisAddress[x][y][i][index+1] = int(j)
                 line1 = fin.readline() # Gets rid of the blank line beetween @O
+                
+
+        with open('output_2.txt', 'w') as f:
+            f.write(str(self.mpEpistasisAddress))
 
     def GetRandomSeeds(self, fin):
 
-        self.mpSeeds = np.array(self.mLandscapesInFile)
+        # print("Landscapes in file " + str(self.mLandscapesInFile))
+        self.mpSeeds = np.zeros(self.mLandscapesInFile, dtype = int)
 
         line = fin.readline()
         ch = line.split()
@@ -107,7 +117,7 @@ class NKLandscape:
             print("It should be reading @SEEDS")
         for i in range(0,self.mLandscapesInFile):
             line = fin.readline()
-            np.append(self.mpSeeds,line) # Each seed is in a line
+            self.mpSeeds[i] = line # Each seed is in a line
 
     def GetMemoryVarious(self):
 
@@ -127,19 +137,27 @@ class NKLandscape:
 
     def InitList(self, lid):
         if (self.mVerify == True):
-            print ("Seeds[" + lid + "]" + self.mpSeeds[lid])
+            print ("Seeds[" + str(lid) + "]" + str(self.mpSeeds[lid]))
+
+        # tb = toolbox.Toolbox()
+
+        # tb.SeedGenRand(self.mpSeeds[lid])
+        random.seed(self.mpSeeds[lid])
         
         for x in range(0,self.mOb):
             for i in range(0, self.mP):
-                for j in range(0,self.mK):
-                    self.mpList[x][i][j] = int(random.randint(0,1))
+                for j in range(0,int( 2* (self.mK + 1))):
+                    self.mpList[x][i][j] = int(random.randint(0,4294967295))
+                    # self.mpList[x][i][j] = int(tb.GenRand())
                     if (self.mVerify == True):
-                        print ("List[" + x + "][" + i + "][" + j + "]=" + self.mpList[x][i][j])
-        
-        return
+                        print ("List[" + str(x) + "][" + str(i) + "][" + str(j) + "]=" + str(self.mpList[x][i][j]))
+        # random=1383938801
+        # tb.SeedGenRand(random)
 
-    def FitnessFunction (self, pgenotype, num_objectives, pfitness):
+    def FitnessFunction (self, pgenotype):
         pbit_string = pgenotype
+
+        pfitness = np.zeros(self.mOb)
 
         if self.mInitialized == False:
             print("ble")
@@ -155,33 +173,37 @@ class NKLandscape:
             for j in range(0,self.mP):
                 pfitness[i] += self.mpFitContribution[i][j]
                 if (self.mVerify == True):
-                    print("F[" + i + "][" + j + "] = " + self.mpFitContribution[i][j])
+                    print("F[" + str(i) + "][" + str(j) + "] = " + str(self.mpFitContribution[i][j]))
             if (self.mVerify == True):
-                print("Ob: " + i + " " + pfitness[i])
+                print("Ob: " + str(i) + " " + str(pfitness[i]))
         for i in range(0,self.mOb):
             pfitness[i] = pfitness[i] / self.mP
             if (self.mVerify == True):
-                print("Ob: " + i + " " + pfitness[i])
+                print("Ob: " + str(i) + " " + str(pfitness[i]))
         return pfitness
 
     def EvalString(self, pbits):
 
-        for y in range(0,self.mOb): # Is this necessary?
+        with open('output.txt', 'w') as f:
+            f.write(str(self.mpEpistasisAddress))
+
+        for y in range(0,self.mOb):
             for i in range(0,self.mP):
                 rseed = 0
                 for j in range(0,self.mK+1):
                     bit = pbits[self.mpEpistasisAddress[self.mLandscapeId][y][i][j]]
-                    if (bit==0):
+                    # print("bit : " + str(self.mpEpistasisAddress[self.mLandscapeId][y][i][j]))
+                    if (bit == 0):
                         z = j
                     elif (bit == 1):
                         z = j + self.mK + 1
                     rseed = rseed ^ self.mpList[y][i][z]
-                    rseed += 1
-            if (self.mVerify == True):
-                print("rseed: " + rseed)
-            self.mpFitContribution[y][i] += random.random() # A number from 0 to 1
-
-
-
-        return
+                if (self.mVerify == True):
+                    print("rseed: " + str(rseed))
+                random.seed(rseed)
+                fi = random.randint(0,65535) # Not really necessary
+                self.mpFitContribution[y][i] += fi/65535 # A number from 0 to 1
+                # random.seed(rseed)
+                # fi= ( (random.randint(0,4294967295) >> 7) & 0xff) + ( (random.randint(0,4294967295) << 1) & 0xff00 )
+                # self.mpFitContribution[y][i] += fi / 65535 # A number from 0 to 1
 
