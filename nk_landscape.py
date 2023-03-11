@@ -6,13 +6,9 @@
 # landspace
 # problem_id
 
-from platform import mac_ver
 import numpy as np
 import random
 import sys
-from scipy.stats import truncnorm
-
-# import toolbox
 
 class NKLandscape:
     mN = 0
@@ -33,16 +29,15 @@ class NKLandscape:
     mLandscapesInFile = 0
 
     mpSeeds = []
-    mpList = 0
+    mpList = 0              # Stores the seeds to generate the fitness of each bit
 
     mVerify = False
 
-
-    def __init__(self,pdir, plname, problem_id, verify):
+    def __init__(self,plname, problem_id, verify):
 
         self.mVerify = verify
 
-        fin = open(pdir, 'r')
+        fin = open(plname, 'r')
 
         self.ReadLandscapeHeader(fin)
         self.GetEpistasisAddress(fin)
@@ -97,19 +92,13 @@ class NKLandscape:
                     ch2 = line2.split()
                     for j in range(0,self.mN):
                         epistasis = int(ch2[j])
-                        # print("epistasis: " + str(epistasis) + " j: " + str(int(j)))
                         if (epistasis == 1):
-                            # print("inside the if")
-                            self.mpEpistasisAddress[x][y][i][index+1] = int(j)
+                            self.mpEpistasisAddress[x][y][i][index] = int(j)
+                            index = index+1
                 line1 = fin.readline() # Gets rid of the blank line beetween @O
                 
-
-        with open('output_2.txt', 'w') as f:
-            f.write(str(self.mpEpistasisAddress))
-
     def GetRandomSeeds(self, fin):
 
-        # print("Landscapes in file " + str(self.mLandscapesInFile))
         self.mpSeeds = np.zeros(self.mLandscapesInFile, dtype = int)
 
         line = fin.readline()
@@ -140,20 +129,14 @@ class NKLandscape:
         if (self.mVerify == True):
             print ("Seeds[" + str(lid) + "]" + str(self.mpSeeds[lid]))
 
-        # tb = toolbox.Toolbox()
-
-        # tb.SeedGenRand(self.mpSeeds[lid])
         random.seed(self.mpSeeds[lid])
         
         for x in range(0,self.mOb):
             for i in range(0, self.mP):
                 for j in range(0,int( 2* (self.mK + 1))):
-                    self.mpList[x][i][j] = int(random.randint(0,4294967295))
-                    # self.mpList[x][i][j] = int(tb.GenRand())
+                    self.mpList[x][i][j] = int(random.randint(0,4294967295)) # 0xFFFFFFFF from C++, 32 bits size
                     if (self.mVerify == True):
                         print ("List[" + str(x) + "][" + str(i) + "][" + str(j) + "]=" + str(self.mpList[x][i][j]))
-        # random=1383938801
-        # tb.SeedGenRand(random)
 
     def FitnessFunction (self, pgenotype):
         pbit_string = pgenotype
@@ -161,7 +144,6 @@ class NKLandscape:
         pfitness = np.zeros(self.mOb)
 
         if self.mInitialized == False:
-            print("ble")
             sys.exit("Problem must be initialized first")
         for i in range(0,self.mOb):
             pfitness[i] = 0
@@ -170,6 +152,7 @@ class NKLandscape:
         
         self.EvalString(pbit_string)
 
+        # Assings the fitness to each objective
         for i in range(0,self.mOb):
             for j in range(0,self.mP):
                 pfitness[i] += self.mpFitContribution[i][j]
@@ -184,16 +167,11 @@ class NKLandscape:
         return pfitness
 
     def EvalString(self, pbits):
-
-        with open('output.txt', 'w') as f:
-            f.write(str(self.mpEpistasisAddress))
-
         for y in range(0,self.mOb):
             for i in range(0,self.mP):
                 rseed = 0
                 for j in range(0,self.mK+1):
                     bit = pbits[self.mpEpistasisAddress[self.mLandscapeId][y][i][j]]
-                    # print("bit : " + str(self.mpEpistasisAddress[self.mLandscapeId][y][i][j]))
                     if (bit == 0):
                         z = j
                     elif (bit == 1):
@@ -203,10 +181,27 @@ class NKLandscape:
                     print("rseed: " + str(rseed))
                 random.seed(rseed)
 
-                # fi = random.randint(0,65535) # Not really necessary
-                # self.mpFitContribution[y][i] += fi/65535 # A number from 0 to 1
                 self.mpFitContribution[y][i] += random.random() # A number from 0 to 1
-                # random.seed(rseed)
-                # fi= ( (random.randint(0,4294967295) >> 7) & 0xff) + ( (random.randint(0,4294967295) << 1) & 0xff00 )
-                # self.mpFitContribution[y][i] += fi / 65535 # A number from 0 to 1
 
+    def EvalStringDebug(self, pbits):
+        for y in range(0,self.mOb):
+            for i in range(0,self.mP):
+                rseed = 0
+                for j in range(0,self.mK+1):
+                    bit = pbits[self.mpEpistasisAddress[self.mLandscapeId][y][i][j]]
+                    print(bit)
+                    if (bit == 0):
+                        z = j
+                    elif (bit == 1):
+                        z = j + self.mK + 1
+                    rseed = rseed ^ self.mpList[y][i][z]
+                random.seed(rseed)
+
+                self.mpFitContribution[y][i] += random.random() # A number from 0 to 1
+
+
+    def print_for_debug(self):
+        with open("debug.txt", "w") as f:
+            for i in self.mpList:
+                f.write(str(i))
+                f.write("\n")
